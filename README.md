@@ -1,4 +1,6 @@
-mermaid 
+```mermaid
+... код диаграммы ...
+
 
 graph TD
     subgraph Входная цепь (20В по запросу)
@@ -27,3 +29,4 @@ graph TD
     style PSU fill:#cde4ff
     style RPI fill:#ffcdd2
 
+```
