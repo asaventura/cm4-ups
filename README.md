@@ -1,7 +1,7 @@
 ```mermaid
 
 graph TD
-    subgraph Входная цепь (20В по запросу)
+    subgraph "Входная цепь (20В по запросу)"
         PSU[БП USB-C PD 65W+] --> PD_T[PD-триггер <br> Запрос 20В]
     end
 
