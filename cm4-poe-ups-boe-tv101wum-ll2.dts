@@ -2,118 +2,113 @@
 /plugin/;
 
 / {
-    compatible = "brcm,bcm2711";
+	compatible = "brcm,bcm2711";
 
-    fragment@0 {
-        target = <&panel_power_p5v8>;
-        __overlay__ { gpios = <&gpio 23 0>; };
-    };
+	fragment@0 {
+		target = <&panel_power_p5v8>;
+		__overlay__ { gpios = <&gpio 23 0>; };
+	};
 
-    fragment@1 {
-        target = <&panel_power_n5v8>;
-        __overlay__ { gpios = <&gpio 24 0>; };
-    };
+	fragment@1 {
+		target = <&panel_power_n5v8>;
+		__overlay__ { gpios = <&gpio 24 0>; };
+	};
 
-    fragment@2 {
-        target = <&backlight_pwm>;
-        __overlay__ { enable-gpios = <&gpio 13 0>; };
-    };
+	fragment@2 {
+		target = <&backlight_pwm>;
+		__overlay__ { enable-gpios = <&gpio 13 0>; };
+	};
 
-    fragment@3 {
-        target = <&panel_dsi1>;
-        __overlay__ { reset-gpios = <&gpio 17 1>; };
-    };
+	fragment@3 {
+		target = <&panel_dsi1>;
+		__overlay__ { reset-gpios = <&gpio 17 1>; };
+	};
 
-    fragment@4 {
-        target = <&touchscreen_i2c>;
-        __overlay__ {
-            interrupts = <22 2>;
-            reset-gpios = <&gpio 27 1>;
-        };
-    };
+	fragment@4 {
+		target = <&touchscreen_i2c>;
+		__overlay__ {
+			interrupts = <22 2>;
+			reset-gpios = <&gpio 27 1>;
+		};
+	};
 
-    fragment@5 {
-        target = <&dsi1>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
-            status = "okay";
+	fragment@5 {
+		target = <&dsi1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			port {
+				dsi1_out: endpoint {
+					remote-endpoint = <&panel_in_dsi1>;
+				};
+			};
+			panel_dsi1: panel@0 {
+				compatible = "boe,tv101wum-ll2";
+				reg = <0>;
+				status = "okay";
+				power-supply = <&panel_power_p5v8>, <&panel_power_n5v8>;
+				backlight = <&backlight_pwm>;
+				port {
+					panel_in_dsi1: endpoint {
+						remote-endpoint = <&dsi1_out>;
+					};
+				};
+			};
+		};
+	};
 
-            port {
-                dsi1_out: endpoint {
-                    remote-endpoint = <&panel_in_dsi1>;
-                };
-            };
+	fragment@6 {
+		target-path = "/";
+		__overlay__ {
+			panel_power_p5v8: regulator-panel-power-p5v8 {
+				compatible = "regulator-fixed";
+				regulator-name = "panel_power_p5v8";
+				startup-delay-us = <20000>;
+				enable-active-high;
+			};
+			panel_power_n5v8: regulator-panel-power-n5v8 {
+				compatible = "regulator-fixed";
+				regulator-name = "panel_power_n5v8";
+				startup-delay-us = <20000>;
+				enable-active-high;
+			};
+		};
+	};
+	
+	fragment@7 {
+		target = <&pwm>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			backlight_pwm: backlight {
+				compatible = "pwm-backlight";
+				pwms = <&pwm 0 50000>;
+				status = "okay";
+			};
+		};
+	};
 
-            panel_dsi1: panel@0 {
-                compatible = "boe,tv101wum-ll2";
-                reg = <0>;
-                status = "okay";
-                power-supply = <&panel_power_p5v8>, <&panel_power_n5v8>;
-                backlight = <&backlight_pwm>;
+	fragment@8 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+			touchscreen_i2c: touchscreen@38 {
+				compatible = "focaltech,ft8201";
+				reg = <0x38>;
+			};
+		};
+	};
 
-                port {
-                    panel_in_dsi1: endpoint {
-                        remote-endpoint = <&dsi1_out>;
-                    };
-                };
-            };
-        };
-    };
-
-    fragment@6 {
-        target-path = "/";
-        __overlay__ {
-            panel_power_p5v8: regulator-panel-power-p5v8 {
-                compatible = "regulator-fixed";
-                regulator-name = "panel_power_p5v8";
-                startup-delay-us = <20000>;
-                enable-active-high;
-            };
-            panel_power_n5v8: regulator-panel-power-n5v8 {
-                compatible = "regulator-fixed";
-                regulator-name = "panel_power_n5v8";
-                startup-delay-us = <20000>;
-                enable-active-high;
-            };
-        };
-    };
-    
-    fragment@7 {
-        target = <&pwm>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
-            status = "okay";
-
-            backlight_pwm: backlight {
-                compatible = "pwm-backlight";
-                pwms = <&pwm 0 50000>;
-                status = "okay";
-            };
-        };
-    };
-
-    fragment@8 {
-        target = <&i2c1>;
-        __overlay__ {
-            #address-cells = <1>;
-            #size-cells = <0>;
-            status = "okay";
-
-            touchscreen_i2c: touchscreen@38 {
-                compatible = "focaltech,ft8201";
-                reg = <0x38>;
-            };
-        };
-    };
-
-    __overrides__ {
-        en_p5v8_gpio =      <&panel_power_p5v8>, "gpios:4";
-        en_n5v8_gpio =      <&panel_power_n5v8>, "gpios:4";
-        bl_en_gpio =        <&backlight_pwm>, "enable-gpios:4";
-        panel_rst_gpio =    <&panel_dsi1>, "reset-gpios:4";
-        touch_rst_gpio =    <&touchscreen_i2c>, "reset-gpios:4";
-        touch_irq_gpio =    <&touchscreen_i2c>, "interrupts:0";
-    };
+	__overrides__ {
+		en_p5v8_gpio =      <&panel_power_p5v8>, "gpios:4";
+		en_n5v8_gpio =      <&panel_power_n5v8>, "gpios:4";
+		bl_en_gpio =        <&backlight_pwm>, "enable-gpios:4";
+		panel_rst_gpio =    <&panel_dsi1>, "reset-gpios:4";
+		touch_rst_gpio =    <&touchscreen_i2c>, "reset-gpios:4";
+		touch_irq_gpio =    <&touchscreen_i2c>, "interrupts:0";
+	};
 };
