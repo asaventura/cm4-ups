@@ -4,34 +4,59 @@
 / {
     compatible = "brcm,bcm2711";
 
-    // --- Фрагменты для установки GPIO из config.txt ---
+    /*
+     * Фрагмент 0: Установка GPIO для EN+5V8.
+     * Переопределяется в config.txt: dtparam=en_p5v8_gpio=23
+     */
     fragment@0 {
         target = <&panel_power_p5v8>;
-        __overlay__ { gpios = <&gpio 23 0>; }; // EN+5V8
+        __overlay__ { gpios = <&gpio 23 0>; };
     };
+
+    /*
+     * Фрагмент 1: Установка GPIO для EN-5V8.
+     * Переопределяется в config.txt: dtparam=en_n5v8_gpio=24
+     */
     fragment@1 {
         target = <&panel_power_n5v8>;
-        __overlay__ { gpios = <&gpio 24 0>; }; // EN-5V8
+        __overlay__ { gpios = <&gpio 24 0>; };
     };
+
+    /*
+     * Фрагмент 2: Установка GPIO для BL_EN (включение подсветки).
+     * Переопределяется в config.txt: dtparam=bl_en_gpio=13
+     */
     fragment@2 {
         target = <&backlight_pwm>;
-        __overlay__ { enable-gpios = <&gpio 13 0>; }; // BL_EN
+        __overlay__ { enable-gpios = <&gpio 13 0>; };
     };
+
+    /*
+     * Фрагмент 3: Установка GPIO для LCD_RST (сброс панели).
+     * Переопределяется в config.txt: dtparam=panel_rst_gpio=17
+     */
     fragment@3 {
         target = <&panel_dsi1>;
-        __overlay__ { reset-gpios = <&gpio 17 1>; }; // LCD_RST
+        __overlay__ { reset-gpios = <&gpio 17 1>; };
     };
+
+    /*
+     * Фрагмент 4: Установка GPIO для тачскрина.
+     * TP_INT -> dtparam=touch_irq_gpio=22
+     * TP_RST -> dtparam=touch_rst_gpio=27
+     */
     fragment@4 {
         target = <&touchscreen_i2c>;
         __overlay__ {
-            interrupts = <22 2>;     // TP_INT
-            reset-gpios = <&gpio 27 1>; // TP_RST
+            interrupts = <22 2>;
+            reset-gpios = <&gpio 27 1>;
         };
     };
 
-    // --- Описание дисплея на интерфейсе DSI1 ---
+    /* --- Основная конфигурация --- */
+
     fragment@5 {
-        target = <&dsi1>; // ИЗМЕНЕНО: Цель - интерфейс DSI1
+        target = <&dsi1>;
         __overlay__ {
             #address-cells = <1>;
             #size-cells = <0>;
@@ -47,13 +72,8 @@
                 compatible = "boe,tv101wum-ll2";
                 reg = <0>;
                 status = "okay";
-
-                // ИЗМЕНЕНО: Указываем два независимых источника питания
                 power-supply = <&panel_power_p5v8>, <&panel_power_n5v8>;
                 backlight = <&backlight_pwm>;
-
-                // GPIO для сброса панели будет установлен из fragment@3
-                // reset-gpios = <...>;
 
                 port {
                     panel_in_dsi1: endpoint {
@@ -64,31 +84,24 @@
         };
     };
 
-    // --- Определение регуляторов питания ---
     fragment@6 {
         target-path = "/";
         __overlay__ {
-            // ИЗМЕНЕНО: Отдельный регулятор для EN+5V8
             panel_power_p5v8: regulator-panel-power-p5v8 {
                 compatible = "regulator-fixed";
                 regulator-name = "panel_power_p5v8";
                 startup-delay-us = <20000>;
                 enable-active-high;
-                // GPIO будет установлен из fragment@0
             };
-
-            // ИЗМЕНЕНО: Отдельный регулятор для EN-5V8
             panel_power_n5v8: regulator-panel-power-n5v8 {
                 compatible = "regulator-fixed";
                 regulator-name = "panel_power_n5v8";
                 startup-delay-us = <20000>;
                 enable-active-high;
-                // GPIO будет установлен из fragment@1
             };
         };
     };
     
-    // --- Описание подсветки ---
     fragment@7 {
         target = <&pwm>;
         __overlay__ {
@@ -98,15 +111,12 @@
 
             backlight_pwm: backlight {
                 compatible = "pwm-backlight";
-                pwms = <&pwm 0 50000>; // GPIO18 (PWM0), частота 50 кГц
-                // GPIO для включения будет установлен из fragment@2
-                // enable-gpios = <...>;
+                pwms = <&pwm 0 50000>;
                 status = "okay";
             };
         };
     };
 
-    // --- Описание тачскрина на шине I2C1 ---
     fragment@8 {
         target = <&i2c1>;
         __overlay__ {
@@ -117,12 +127,10 @@
             touchscreen_i2c: touchscreen@38 {
                 compatible = "focaltech,ft8201";
                 reg = <0x38>;
-                // GPIO для прерывания и сброса будут установлены из fragment@4
             };
         };
     };
 
-    // --- Переопределение GPIO для легкой настройки из config.txt ---
     __overrides__ {
         en_p5v8_gpio =      <&panel_power_p5v8>, "gpios:4";
         en_n5v8_gpio =      <&panel_power_n5v8>, "gpios:4";
