@@ -2,113 +2,115 @@
 /plugin/;
 
 / {
-	compatible = "brcm,bcm2711";
+    compatible = "brcm,bcm2711";
 
-	fragment@0 {
-		target = <&panel_power_p5v8>;
-		__overlay__ { gpios = <&gpio 23 0>; };
-	};
+    /* Фрагмент для включения интерфейса DSI0 */
+    fragment@0 {
+        target = <&dsi0>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
 
-	fragment@1 {
-		target = <&panel_power_n5v8>;
-		__overlay__ { gpios = <&gpio 24 0>; };
-	};
+            port {
+                dsi0_out: endpoint {
+                    remote-endpoint = <&panel_in>;
+                };
+            };
 
-	fragment@2 {
-		target = <&backlight_pwm>;
-		__overlay__ { enable-gpios = <&gpio 13 0>; };
-	};
+            /* Описание самой панели */
+            panel: panel@0 {
+                compatible = "boe,tv101wum-ll2"; // Совместимость с драйвером в ядре
+                reg = <0>;
+                status = "okay";
 
-	fragment@3 {
-		target = <&panel_dsi1>;
-		__overlay__ { reset-gpios = <&gpio 17 1>; };
-	};
+                // Ссылки на узлы питания и подсветки
+                power-supply = <&panel_power>;
+                backlight = <&backlight>;
 
-	fragment@4 {
-		target = <&touchscreen_i2c>;
-		__overlay__ {
-			interrupts = <22 2>;
-			reset-gpios = <&gpio 27 1>;
-		};
-	};
+                // Указание GPIO для сброса дисплея (LCD_RST)
+                // Подключен к GPIO17 (Pin 11), активный уровень - низкий
+                reset-gpios = <&gpio 17 1>; // 1 = Active Low
 
-	fragment@5 {
-		target = <&dsi1>;
-		__overlay__ {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			port {
-				dsi1_out: endpoint {
-					remote-endpoint = <&panel_in_dsi1>;
-				};
-			};
-			panel_dsi1: panel@0 {
-				compatible = "boe,tv101wum-ll2";
-				reg = <0>;
-				status = "okay";
-				power-supply = <&panel_power_p5v8>, <&panel_power_n5v8>;
-				backlight = <&backlight_pwm>;
-				port {
-					panel_in_dsi1: endpoint {
-						remote-endpoint = <&dsi1_out>;
-					};
-				};
-			};
-		};
-	};
+                // Указание GPIO для сброса тач-панели (TP_RST)
+                // Подключен к GPIO27 (Pin 13), активный уровень - низкий (стандартно)
+                tp-reset-gpios = <&gpio 27 1>; // 1 = Active Low
 
-	fragment@6 {
-		target-path = "/";
-		__overlay__ {
-			panel_power_p5v8: regulator-panel-power-p5v8 {
-				compatible = "regulator-fixed";
-				regulator-name = "panel_power_p5v8";
-				startup-delay-us = <20000>;
-				enable-active-high;
-			};
-			panel_power_n5v8: regulator-panel-power-n5v8 {
-				compatible = "regulator-fixed";
-				regulator-name = "panel_power_n5v8";
-				startup-delay-us = <20000>;
-				enable-active-high;
-			};
-		};
-	};
-	
-	fragment@7 {
-		target = <&pwm>;
-		__overlay__ {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			backlight_pwm: backlight {
-				compatible = "pwm-backlight";
-				pwms = <&pwm 0 50000>;
-				status = "okay";
-			};
-		};
-	};
+                // Указание GPIO для прерывания от тач-панели (TP_INT)
+                // Подключен к GPIO22 (Pin 15)
+                tp-int-gpios = <&gpio 22 8>; // 8 = IRQ_TYPE_EDGE_FALLING
 
-	fragment@8 {
-		target = <&i2c1>;
-		__overlay__ {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			status = "okay";
-			touchscreen_i2c: touchscreen@38 {
-				compatible = "focaltech,ft8201";
-				reg = <0x38>;
-			};
-		};
-	};
+                port {
+                    panel_in: endpoint {
+                        remote-endpoint = <&dsi0_out>;
+                    };
+                };
+            };
+        };
+    };
 
-	__overrides__ {
-		en_p5v8_gpio =      <&panel_power_p5v8>, "gpios:4";
-		en_n5v8_gpio =      <&panel_power_n5v8>, "gpios:4";
-		bl_en_gpio =        <&backlight_pwm>, "enable-gpios:4";
-		panel_rst_gpio =    <&panel_dsi1>, "reset-gpios:4";
-		touch_rst_gpio =    <&touchscreen_i2c>, "reset-gpios:4";
-		touch_irq_gpio =    <&touchscreen_i2c>, "interrupts:0";
-	};
+    /* Фрагмент для управления питанием панели */
+    fragment@1 {
+        target = <&gpio>;
+        __overlay__ {
+            panel_power_pins: panel_power_pins {
+                brcm,pins = <23 24>; // GPIO23 (Pin 16), GPIO24 (Pin 18)
+                brcm,function = <1>; // 1 = Output
+            };
+        };
+    };
+
+    fragment@2 {
+        target-path = "/";
+        __overlay__ {
+            /* Фиктивный регулятор для управления питанием через GPIO */
+            panel_power: panel_power_regulator {
+                compatible = "regulator-fixed";
+                regulator-name = "panel_power";
+                // GPIO для EN+5V8 (GPIO23) и EN-5V8 (GPIO24)
+                gpio = <&gpio 23 0>, <&gpio 24 0>; // 0 = Active High
+                enable-active-high;
+                // Задержка включения, если требуется по спецификации
+                startup-delay-us = <5000>; [span_0](start_span)// 5 мс, t3 из спецификации[span_0](end_span)
+            };
+        };
+    };
+
+    /* Фрагмент для управления подсветкой */
+    fragment@3 {
+        target = <&gpio>;
+        __overlay__ {
+            backlight_pins: backlight_pins {
+                brcm,pins = <13>; // GPIO13 (Pin 33) для BL_EN
+                brcm,function = <1>; // 1 = Output
+            };
+        };
+    };
+
+    fragment@4 {
+        target-path = "/";
+        __overlay__ {
+            backlight: backlight {
+                compatible = "pwm-backlight";
+                // BL_PWM подключен к GPIO18 (Pin 12), который является аппаратным PWM0
+                pwms = <&pwm0 0 50000>; // PWM0, канал 0, период 50000 нс (частота 20 кГц)
+
+                // BL_EN подключен к GPIO13 (Pin 33)
+                enable-gpios = <&gpio 13 0>; [span_1](start_span)// 0 = Active High[span_1](end_span)
+
+                brightness-levels = <0 4 8 16 32 64 128 255>;
+                default-brightness-level = <6>;
+                power-supply = <&panel_power>;
+                status = "okay";
+            };
+        };
+    };
+
+    /* Включение PWM0 */
+    fragment@5 {
+        target = <&pwm0>;
+        __overlay__ {
+            status = "okay";
+        };
+    };
 };
