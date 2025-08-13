@@ -4,47 +4,26 @@
 / {
     compatible = "brcm,bcm2711";
 
-    /*
-     * Фрагмент 0: Установка GPIO для EN+5V8.
-     * Переопределяется в config.txt: dtparam=en_p5v8_gpio=23
-     */
     fragment@0 {
         target = <&panel_power_p5v8>;
         __overlay__ { gpios = <&gpio 23 0>; };
     };
 
-    /*
-     * Фрагмент 1: Установка GPIO для EN-5V8.
-     * Переопределяется в config.txt: dtparam=en_n5v8_gpio=24
-     */
     fragment@1 {
         target = <&panel_power_n5v8>;
         __overlay__ { gpios = <&gpio 24 0>; };
     };
 
-    /*
-     * Фрагмент 2: Установка GPIO для BL_EN (включение подсветки).
-     * Переопределяется в config.txt: dtparam=bl_en_gpio=13
-     */
     fragment@2 {
         target = <&backlight_pwm>;
         __overlay__ { enable-gpios = <&gpio 13 0>; };
     };
 
-    /*
-     * Фрагмент 3: Установка GPIO для LCD_RST (сброс панели).
-     * Переопределяется в config.txt: dtparam=panel_rst_gpio=17
-     */
     fragment@3 {
         target = <&panel_dsi1>;
         __overlay__ { reset-gpios = <&gpio 17 1>; };
     };
 
-    /*
-     * Фрагмент 4: Установка GPIO для тачскрина.
-     * TP_INT -> dtparam=touch_irq_gpio=22
-     * TP_RST -> dtparam=touch_rst_gpio=27
-     */
     fragment@4 {
         target = <&touchscreen_i2c>;
         __overlay__ {
@@ -52,8 +31,6 @@
             reset-gpios = <&gpio 27 1>;
         };
     };
-
-    /* --- Основная конфигурация --- */
 
     fragment@5 {
         target = <&dsi1>;
