@@ -1,0 +1,104 @@
+/dts-v1/;
+/plugin/;
+
+/ {
+    compatible = "brcm,bcm2711";
+
+    // --- Фрагмент #1: Настройка интерфейса DSI1 и описание панели ---
+    fragment@0 {
+        target = <&dsi1>; // ВАЖНО: Цель - интерфейс DSI1
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+
+            // Связываем DSI хост с панелью
+            port {
+                dsi1_out: endpoint {
+                    remote-endpoint = <&panel_in_dsi1>;
+                };
+            };
+
+            panel_dsi1: panel@0 {
+                compatible = "boe,tv101wum-ll2"; // Драйвер ядра для этой панели
+                reg = <0>; // Канал 0 на шине DSI
+                status = "okay";
+
+                reset-gpios = <&gpio 17 1>; // LCD_RST, подключен к GPIO17, активный низкий
+
+                power-supply = <&panel_power>;
+                backlight = <&backlight_pwm>;
+
+                port {
+                    panel_in_dsi1: endpoint {
+                        remote-endpoint = <&dsi1_out>;
+                    };
+                };
+            };
+        };
+    };
+
+    // --- Фрагмент #2: Описание регулятора питания панели ---
+    fragment@1 {
+        target-path = "/";
+        __overlay__ {
+            panel_power: regulator-panel-power {
+                compatible = "regulator-fixed";
+                regulator-name = "panel_power";
+                startup-delay-us = <20000>;
+                enable-active-high;
+                // Управляется через EN+5V8 и EN-5V8, подключенные к GPIO12
+                gpios = <&gpio 12 0>; 
+            };
+        };
+    };
+    
+    // --- Фрагмент #3: Описание подсветки ---
+    fragment@2 {
+        target = <&pwm>;
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+
+            backlight_pwm: backlight {
+                compatible = "pwm-backlight";
+                power-supply = <&panel_power>;
+                // BL_PWM подключен к GPIO18 (аппаратный ШИМ0)
+                pwms = <&pwm 0 50000>; 
+                // BL_EN подключен к GPIO13
+                enable-gpios = <&gpio 13 0>; 
+                brightness-levels = <0 4 8 16 32 64 128 255>;
+                default-brightness-level = <6>;
+                status = "okay";
+            };
+        };
+    };
+
+    // --- Фрагмент #4: Описание тачскрина ---
+    fragment@3 {
+        target = <&i2c1>; // Используем шину I2C1
+        __overlay__ {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            status = "okay";
+
+            touchscreen_i2c: touchscreen@38 {
+                compatible = "focaltech,ft8201";
+                reg = <0x38>; // Стандартный I2C адрес
+                
+                // TP_INT подключен к GPIO22, прерывание по спаду
+                interrupt-parent = <&gpio>;
+                interrupts = <22 2>; 
+                
+                // TP_RST подключен к GPIO27, активный низкий
+                reset-gpios = <&gpio 27 1>; 
+
+                touchscreen-size-x = <1200>;
+                touchscreen-size-y = <1920>;
+                // Если оси X и Y перепутаны, раскомментируйте (удалите //) следующую строку
+                // touchscreen-swapped-x-y; 
+            };
+        };
+    };
+};
